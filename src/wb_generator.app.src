@@ -1,0 +1,11 @@
+{application, wb_generator,
+  [
+    {description, "Word board generation"},
+    {vsn, "0.0.1"},
+    {modules, [wb_generator_app, wb_tree]},
+    {registered, []},
+    {applications, [kernel, stdlib]},
+    {env, []},
+    {mod, {wb_generator_app, []}}
+  ]}.
+
