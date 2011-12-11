@@ -15,7 +15,8 @@
 -export([
     start_link/0,
     load_file/1,
-    add_node/2
+    add_node/2,
+    get_node/1
   ]).
 
 -record(state, {
@@ -81,8 +82,10 @@ add_node(Node, Letter) ->
   gen_server:call(?SERVER, {add_node, Node, Letter}).
 
 get_node(Id) ->
-  [Node] = ets:lookup(wb_tree, Id),
-  Node.
+  case ets:lookup(wb_tree, Id) of
+    [Node] -> Node;
+    [] -> not_found
+  end.
 
 handle_call({add_node, Id, Letter}, _From, #state{node_count = Count} = State) ->
   {Id, Terminal, Ids} = get_node(Id),
