@@ -7,11 +7,11 @@
   ]).
 
 start(_Type, _Args) ->
-  {ok, Pid} = wb_tree:start_link(),
+  wb_tree:start_link(),
   spawn(wb_tree, load_file, [code:priv_dir(wb_generator) ++ "/dictionary"]),
-  {ok, Pid}.
+
+  wb_generator_sup:start_link().
 
 stop(_S) ->
   ok.
-
 

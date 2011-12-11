@@ -2,7 +2,7 @@
   [
     {description, "Word board generation"},
     {vsn, "0.0.1"},
-    {modules, [wb_generator_app, wb_tree]},
+    {modules, [wb_generator_app, wb_tree, wb_generator_server, wb_generator_sup]},
     {registered, []},
     {applications, [kernel, stdlib]},
     {env, []},
