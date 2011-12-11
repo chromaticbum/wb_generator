@@ -28,4 +28,4 @@ init([]) ->
 
 do_stuff() ->
   {ok, Pid} = start_child({5, 5}),
-  wb_generator_server:generate_board(Pid).
+  wb_generator_server:generate_grid(Pid).

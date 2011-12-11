@@ -6,6 +6,7 @@
     create_letter_grid/2,
     random_letter/0,
     value/3,
+    set_value/4,
     rotate_position/5,
     word_count/1
   ]).

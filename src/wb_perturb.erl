@@ -15,61 +15,61 @@ perturb_grid(Grid) ->
   perturb_random(Grid).
 
 perturb_random(Grid) ->
-  case random:uniform(4) of
-    1 -> perturb1(Grid);
-    2 -> perturb2(Grid);
-    3 -> perturb3(Grid);
-    4 -> perturb4(Grid)
+  case random:uniform(1) of
+    1 -> perturb2(Grid) %;
+    % 2 -> perturb2(Grid);
+    % 3 -> perturb3(Grid);
+    % 4 -> perturb4(Grid)
   end.
 
-perturb1(#grid{type = letter, rows = Rows, columns = Columns, matrix = Matrix}) ->
-  Size = Rows * Columns,
-  Count = random:uniform(Size),
+perturb1(#grid{type = letter, rows = Rows, columns = Columns} = Grid) ->
+  Count = random:uniform(Rows * Columns),
 
   lists:foldl(
-    fun(_, Matrix2) ->
-        setelement(random:uniform(Size), Matrix2, wb_board:random_letter())
-    end, Matrix, lists:seq(1, Count)
+    fun(_, Grid2) ->
+      wb_grid:set_value(Grid2, random:uniform(Rows), random:uniform(Columns), wb_grid:random_letter())
+    end, Grid, lists:seq(1, Count)
   ).
 
-perturb2(#grid{rows = Rows, columns = Columns, matrix = Matrix}) ->
-  Size = Rows * Columns,
-  Count = random:uniform(Size),
+perturb2(#grid{rows = Rows, columns = Columns} = Grid) ->
+  Count = random:uniform(Rows * Columns),
 
   lists:foldl(
-    fun(_, Matrix2) ->
-      swap(Matrix2, random:uniform(Size), random:uniform(Size))
-    end, Matrix, lists:seq(1, Count)
+    fun(_, Grid2) ->
+      swap(Grid2, random:uniform(Rows), random:uniform(Columns), random:uniform(Rows), random:uniform(Columns))
+    end, Grid, lists:seq(1, Count)
   ).
 
-perturb3(#grid{rows = Rows, columns = Columns, matrix = Matrix}) ->
-  Size = Rows * Columns,
-  Count = random:uniform(Size),
+perturb3(#grid{rows = Rows, columns = Columns} = Grid) ->
+  Count = random:uniform(Rows * Columns),
 
   lists:foldl(
-    fun(_, Matrix2) ->
-      swap_random_adjacent(Matrix2, Rows, Columns)
-    end, Matrix, lists:seq(1, Count)
+    fun(_, Grid2) ->
+      swap_random_adjacent(Grid2, Rows, Columns)
+    end, Grid, lists:seq(1, Count)
   ).
 
-perturb4(#grid{rows = Rows, columns = Columns, matrix = Matrix} = Board) ->
+perturb4(#grid{rows = Rows, columns = Columns} = Grid) ->
   RotRow = random:uniform(Rows - 1),
   RotColumn = random:uniform(Columns - 1),
 
-  Size = Rows * Columns,
-
-  lists:foldl(
-    fun(Index, Matrix2) ->
-      setelement(Index, Matrix2, element(wb_board:rotate_position(Board, Index, RotRow, RotColumn), Matrix))
-    end, Matrix, lists:seq(1, Size)
+  lists:foldr(
+    fun(Row, Grid2) ->
+      lists:foldr(
+        fun(Column, Grid3) ->
+          {Row2, Column2} = wb_grid:rotate_position(Grid, Row, Column, RotRow, RotColumn),
+          wb_grid:set_value(Grid3, Row2, Column2, wb_grid:value(Grid, Row, Column))
+        end, Grid2, lists:seq(1, Columns)
+      )
+    end, Grid, lists:seq(1, Rows)
   ).
 
-swap(Matrix, Index1, Index2) ->
-  Letter1 = element(Index1, Matrix),
-  Matrix2 = setelement(Index1, Matrix, element(Index2, Matrix)),
-  setelement(Index2, Matrix2, Letter1).
+swap(Grid, Row1, Column1, Row2, Column2) ->
+  Letter1 = wb_grid:value(Grid, Row1, Column1),
+  Grid2 = wb_grid:set_value(Grid, Row1, Column1, wb_grid:value(Grid, Row2, Column2)),
+  wb_grid:set_value(Grid2, Row2, Column2, Letter1).
 
-swap_random_adjacent(Matrix, Rows, Columns) ->
+swap_random_adjacent(Grid, Rows, Columns) ->
   Row1 = random:uniform(Rows),
   Column1 = random:uniform(Columns),
 
@@ -85,8 +85,8 @@ swap_random_adjacent(Matrix, Rows, Columns) ->
   end,
 
   case (Row2 >= 1) and (Column2 >= 1) and (Row2 =< Rows) and (Column2 =< Columns) of
-    true -> swap(Matrix, Row1 * Column1, Row2 * Column2);
-    false -> swap_random_adjacent(Matrix, Rows, Columns)
+    true -> swap(Grid, Row1, Column1, Row2, Column2);
+    false -> swap_random_adjacent(Grid, Rows, Columns)
   end.
 
 
