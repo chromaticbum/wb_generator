@@ -13,7 +13,8 @@
 
 % API exports
 -export([
-    start_link/1
+    start_link/0,
+    generate_board/1
   ]).
 
 -define(SERVER, ?MODULE).
@@ -28,25 +29,11 @@
     board
   }).
 
-start_link(BoardSpec) ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [BoardSpec], []).
+start_link() ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-init([{rows, columns}]) ->
-  {ok, #state{board = create_board(rows, columns)}}.
-
-create_board(Rows, Columns) ->
-  Matrix = create_matrix(Rows, Columns),
-  #board{rows = Rows, columns = Columns, matrix = Matrix}.
-
-create_matrix(Rows, Columns) ->
-  {A1, A2, A3} = now(),
-  random:seed(A1, A2, A3),
-
-  lists:map(
-    fun(_Index) ->
-      $a + rand:uniform(26)
-    end, lists:seq(1, Rows * Columns)
-  ).
+init([]) ->
+  {ok, #state{}}.
 
 terminate(_Reason, _State) ->
   ok.
@@ -63,3 +50,20 @@ handle_info(_Info, State) ->
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
+generate_board({Rows, Columns}) ->
+  Board = create_board(Rows, Columns),
+  io:format("Board: ~p~n", [Board]).
+
+create_board(Rows, Columns) ->
+  Matrix = create_matrix(Rows, Columns),
+  #board{rows = Rows, columns = Columns, matrix = Matrix}.
+
+create_matrix(Rows, Columns) ->
+  {A1, A2, A3} = now(),
+  random:seed(A1, A2, A3),
+
+  list_to_tuple(lists:map(
+    fun(_Index) ->
+      $a + random:uniform(26) - 1
+    end, lists:seq(1, Rows * Columns)
+  )).
