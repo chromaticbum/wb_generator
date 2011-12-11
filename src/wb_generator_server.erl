@@ -13,30 +13,56 @@
 
 % API exports
 -export([
-    start_link/0,
-    generate_board/1
+    start_link/1,
+    generate_board/1,
+    perturb_boards/1
   ]).
 
 -define(SERVER, ?MODULE).
 
--record(board, {
-    rows,
-    columns,
-    matrix
-  }).
+-define(BOARD_COUNT, 5).
+-define(PERTURBATION_COUNT, 5).
 
 -record(state, {
-    board
+    info,
+    board_spec
   }).
 
-start_link() ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+boards(#state{info = Info}) ->
+  [{boards, Boards}] = ets:lookup(Info, boards),
+  Boards.
 
-init([]) ->
-  {ok, #state{}}.
+start_link(BoardSpec) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [BoardSpec], []).
+
+init([BoardSpec]) ->
+  Info = ets:new(info, [set]),
+  {ok, #state{info = Info, board_spec = BoardSpec}}.
 
 terminate(_Reason, _State) ->
   ok.
+
+handle_call(perturb_boards, _From, State) ->
+  Boards = boards(State),
+
+  PerturbedBoards = lists:map(
+    fun(Board) ->
+      wb_perturb:perturb_board(Board)
+    end, Boards
+  ),
+
+  error_logger:info_msg("Boards: ~p~n", [Boards]),
+  error_logger:info_msg("PerturbedBoards: ~p~n", [PerturbedBoards]),
+
+  {reply, ok, State};
+handle_call({init_boards, BoardCount}, _From, #state{board_spec = BoardSpec, info = Info} = State) ->
+  Boards = lists:map(
+    fun(_) -> wb_board:create_board(BoardSpec) end,
+    lists:seq(1, BoardCount)
+  ),
+
+  ets:insert(Info, {boards, Boards}),
+  {reply, ok, State};
 
 handle_call(_Args, _From, State) ->
   {reply, ok, State}.
@@ -50,20 +76,13 @@ handle_info(_Info, State) ->
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
-generate_board({Rows, Columns}) ->
-  Board = create_board(Rows, Columns),
-  io:format("Board: ~p~n", [Board]).
+generate_board(Pid) ->
+  init_boards(Pid, ?BOARD_COUNT),
+  perturb_boards(Pid),
+  ok.
 
-create_board(Rows, Columns) ->
-  Matrix = create_matrix(Rows, Columns),
-  #board{rows = Rows, columns = Columns, matrix = Matrix}.
+init_boards(Pid, BoardCount) ->
+  gen_server:call(Pid, {init_boards, BoardCount}).
 
-create_matrix(Rows, Columns) ->
-  {A1, A2, A3} = now(),
-  random:seed(A1, A2, A3),
-
-  list_to_tuple(lists:map(
-    fun(_Index) ->
-      $a + random:uniform(26) - 1
-    end, lists:seq(1, Rows * Columns)
-  )).
+perturb_boards(Pid) ->
+  gen_server:call(Pid, perturb_boards).

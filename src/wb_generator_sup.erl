@@ -3,7 +3,7 @@
 
 -export([
     start_link/0,
-    start_child/0
+    start_child/1
   ]).
 
 -export([
@@ -16,8 +16,8 @@
 start_link() ->
   supervisor:start_link({local, ?SERVER}, ?MODULE, []).
 
-start_child() ->
-  supervisor:start_child(?SERVER, []).
+start_child(BoardSpec) ->
+  supervisor:start_child(?SERVER, [BoardSpec]).
 
 init([]) ->
   GeneratorServer = {wb_generator_server, {wb_generator_server, start_link, []},
@@ -27,6 +27,5 @@ init([]) ->
   {ok, {RestartStrategy, Children}}.
 
 do_stuff() ->
-  {ok, Pid} = start_child(),
-
-  wb_generator_server:generate_board({5, 5}).
+  {ok, Pid} = start_child({5, 5}),
+  wb_generator_server:generate_board(Pid).
