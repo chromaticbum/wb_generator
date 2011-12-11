@@ -14,54 +14,54 @@
 % API exports
 -export([
     start_link/1,
-    generate_board/1,
-    perturb_boards/1
+    generate_grid/1,
+    perturb_grids/1
   ]).
 
 -define(SERVER, ?MODULE).
 
--define(BOARD_COUNT, 5).
+-define(GRID_COUNT, 5).
 -define(PERTURBATION_COUNT, 5).
 
 -record(state, {
     info,
-    board_spec
+    grid_spec
   }).
 
-boards(#state{info = Info}) ->
-  [{boards, Boards}] = ets:lookup(Info, boards),
-  Boards.
+grids(#state{info = Info}) ->
+  [{grids, Grids}] = ets:lookup(Info, grids),
+  Grids.
 
-start_link(BoardSpec) ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [BoardSpec], []).
+start_link(GridSpec) ->
+  gen_server:start_link({local, ?SERVER}, ?MODULE, [GridSpec], []).
 
-init([BoardSpec]) ->
+init([GridSpec]) ->
   Info = ets:new(info, [set]),
-  {ok, #state{info = Info, board_spec = BoardSpec}}.
+  {ok, #state{info = Info, grid_spec = GridSpec}}.
 
 terminate(_Reason, _State) ->
   ok.
 
-handle_call(perturb_boards, _From, State) ->
-  Boards = boards(State),
+handle_call(perturb_grids, _From, State) ->
+  Grids = grids(State),
 
-  PerturbedBoards = lists:map(
-    fun(Board) ->
-      wb_perturb:perturb_board(Board)
-    end, Boards
+  PerturbedGrids = lists:map(
+    fun(Grid) ->
+      wb_perturb:perturb_grid(Grid)
+    end, Grids
   ),
 
-  error_logger:info_msg("Boards: ~p~n", [Boards]),
-  error_logger:info_msg("PerturbedBoards: ~p~n", [PerturbedBoards]),
+  error_logger:info_msg("Grids: ~p~n", [Grids]),
+  error_logger:info_msg("PerturbedGrids: ~p~n", [PerturbedGrids]),
 
   {reply, ok, State};
-handle_call({init_boards, BoardCount}, _From, #state{board_spec = BoardSpec, info = Info} = State) ->
-  Boards = lists:map(
-    fun(_) -> wb_board:create_board(BoardSpec) end,
-    lists:seq(1, BoardCount)
+handle_call({init_grids, GridCount}, _From, #state{grid_spec = {Rows, Columns}, info = Info} = State) ->
+  Grids = lists:map(
+    fun(_) -> wb_grid:create_letter_grid(Rows, Columns) end,
+    lists:seq(1, GridCount)
   ),
 
-  ets:insert(Info, {boards, Boards}),
+  ets:insert(Info, {grids, Grids}),
   {reply, ok, State};
 
 handle_call(_Args, _From, State) ->
@@ -76,13 +76,13 @@ handle_info(_Info, State) ->
 code_change(_OldVsn, State, _Extra) ->
   {ok, State}.
 
-generate_board(Pid) ->
-  init_boards(Pid, ?BOARD_COUNT),
-  perturb_boards(Pid),
+generate_grid(Pid) ->
+  init_grids(Pid, ?GRID_COUNT),
+  perturb_grids(Pid),
   ok.
 
-init_boards(Pid, BoardCount) ->
-  gen_server:call(Pid, {init_boards, BoardCount}).
+init_grids(Pid, GridCount) ->
+  gen_server:call(Pid, {init_grids, GridCount}).
 
-perturb_boards(Pid) ->
-  gen_server:call(Pid, perturb_boards).
+perturb_grids(Pid) ->
+  gen_server:call(Pid, perturb_grids).

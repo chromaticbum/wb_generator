@@ -1,33 +1,28 @@
 -module(wb_perturb).
 
 -include("wb_perturb.hrl").
--include("wb_board.hrl").
+-include("wb_grid.hrl").
 
 -export([
-    perturb_board/1,
+    perturb_grid/1,
     perturb1/1,
     perturb2/1,
     perturb3/1,
     perturb4/1
   ]).
 
-perturb_board(Board) ->
-  % Perturb = generate_random(Board),
-  % #perturb{method = Method} = Perturb,
+perturb_grid(Grid) ->
+  perturb_random(Grid).
 
-  perturb_random(Board).
-
-  % wb_perturb:Method(Board, Perturb).
-
-perturb_random(Board) ->
+perturb_random(Grid) ->
   case random:uniform(4) of
-    1 -> perturb1(Board);
-    2 -> perturb2(Board);
-    3 -> perturb3(Board);
-    4 -> perturb4(Board)
+    1 -> perturb1(Grid);
+    2 -> perturb2(Grid);
+    3 -> perturb3(Grid);
+    4 -> perturb4(Grid)
   end.
 
-perturb1(#board{rows = Rows, columns = Columns, matrix = Matrix}) ->
+perturb1(#grid{type = letter, rows = Rows, columns = Columns, matrix = Matrix}) ->
   Size = Rows * Columns,
   Count = random:uniform(Size),
 
@@ -37,7 +32,7 @@ perturb1(#board{rows = Rows, columns = Columns, matrix = Matrix}) ->
     end, Matrix, lists:seq(1, Count)
   ).
 
-perturb2(#board{rows = Rows, columns = Columns, matrix = Matrix}) ->
+perturb2(#grid{rows = Rows, columns = Columns, matrix = Matrix}) ->
   Size = Rows * Columns,
   Count = random:uniform(Size),
 
@@ -47,7 +42,7 @@ perturb2(#board{rows = Rows, columns = Columns, matrix = Matrix}) ->
     end, Matrix, lists:seq(1, Count)
   ).
 
-perturb3(#board{rows = Rows, columns = Columns, matrix = Matrix}) ->
+perturb3(#grid{rows = Rows, columns = Columns, matrix = Matrix}) ->
   Size = Rows * Columns,
   Count = random:uniform(Size),
 
@@ -57,7 +52,7 @@ perturb3(#board{rows = Rows, columns = Columns, matrix = Matrix}) ->
     end, Matrix, lists:seq(1, Count)
   ).
 
-perturb4(#board{rows = Rows, columns = Columns, matrix = Matrix} = Board) ->
+perturb4(#grid{rows = Rows, columns = Columns, matrix = Matrix} = Board) ->
   RotRow = random:uniform(Rows - 1),
   RotColumn = random:uniform(Columns - 1),
 
