@@ -18,8 +18,6 @@
     perturb_grids/1
   ]).
 
--define(SERVER, ?MODULE).
-
 -define(GRID_COUNT, 5).
 -define(PERTURBATION_COUNT, 5).
 
@@ -28,12 +26,17 @@
     grid_spec
   }).
 
-grids(#state{info = Info}) ->
-  [{grids, Grids}] = ets:lookup(Info, grids),
-  Grids.
+-record(scored_grid, {
+    score,
+    grid
+  }).
+
+scored_grids(#state{info = Info}) ->
+  [{scored_grids, ScoredGrids}] = ets:lookup(Info, scored_grids),
+  ScoredGrids.
 
 start_link(GridSpec) ->
-  gen_server:start_link({local, ?SERVER}, ?MODULE, [GridSpec], []).
+  gen_server:start_link(?MODULE, [GridSpec], []).
 
 init([GridSpec]) ->
   Info = ets:new(info, [set]),
@@ -43,25 +46,29 @@ terminate(_Reason, _State) ->
   ok.
 
 handle_call(perturb_grids, _From, State) ->
-  Grids = grids(State),
+  ScoredGrids = scored_grids(State),
 
   PerturbedGrids = lists:map(
-    fun(Grid) ->
-      wb_perturb:perturb_grid(Grid)
-    end, Grids
+    fun(#scored_grid{grid = Grid}) ->
+      Grid2 = wb_perturb:perturb_grid(Grid),
+      #scored_grid{score = wb_grid:word_count(Grid2), grid = Grid2}
+    end, ScoredGrids
   ),
 
-  error_logger:info_msg("Grids: ~p~n", [Grids]),
+  error_logger:info_msg("Grids: ~p~n", [ScoredGrids]),
   error_logger:info_msg("PerturbedGrids: ~p~n", [PerturbedGrids]),
 
   {reply, ok, State};
 handle_call({init_grids, GridCount}, _From, #state{grid_spec = {Rows, Columns}, info = Info} = State) ->
-  Grids = lists:map(
-    fun(_) -> wb_grid:create_letter_grid(Rows, Columns) end,
+  ScoredGrids = lists:map(
+    fun(_) ->
+      Grid = wb_grid:create_letter_grid(Rows, Columns),
+      #scored_grid{score = wb_grid:word_count(Grid), grid = Grid}
+    end,
     lists:seq(1, GridCount)
   ),
 
-  ets:insert(Info, {grids, Grids}),
+  ets:insert(Info, {scored_grids, ScoredGrids}),
   {reply, ok, State};
 
 handle_call(_Args, _From, State) ->
