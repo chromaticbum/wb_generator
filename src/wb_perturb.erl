@@ -5,57 +5,76 @@
 
 -export([
     perturb_board/1,
-    replace/2,
-    swap/2
+    perturb1/1,
+    perturb2/1,
+    perturb3/1,
+    perturb4/1
   ]).
 
 perturb_board(Board) ->
-  Perturb = generate_random(Board),
-  #perturb{method = Method} = Perturb,
+  % Perturb = generate_random(Board),
+  % #perturb{method = Method} = Perturb,
 
-  wb_perturb:Method(Board, Perturb).
+  perturb_random(Board).
 
-generate_random(Board) ->
-  case random:uniform(2) of
-    1 -> generate_perturb1(Board);
-    2 -> generate_perturb2(Board);
-    3 -> generate_perturb3(Board)
+  % wb_perturb:Method(Board, Perturb).
+
+perturb_random(Board) ->
+  case random:uniform(4) of
+    1 -> perturb1(Board);
+    2 -> perturb2(Board);
+    3 -> perturb3(Board);
+    4 -> perturb4(Board)
   end.
 
-generate_perturb1(#board{rows = Rows, columns = Columns}) ->
+perturb1(#board{rows = Rows, columns = Columns, matrix = Matrix}) ->
   Size = Rows * Columns,
   Count = random:uniform(Size),
 
-  Changes = lists:map(
-    fun(_) -> {random:uniform(Size), wb_board:random_letter()} end,
-    lists:seq(1, Count)
-  ),
+  lists:foldl(
+    fun(_, Matrix2) ->
+        setelement(random:uniform(Size), Matrix2, wb_board:random_letter())
+    end, Matrix, lists:seq(1, Count)
+  ).
 
-  #perturb{method = replace, changes = Changes}.
-
-generate_perturb2(#board{rows = Rows, columns = Columns}) ->
+perturb2(#board{rows = Rows, columns = Columns, matrix = Matrix}) ->
   Size = Rows * Columns,
   Count = random:uniform(Size),
 
-  Changes = lists:map(
-    fun(_) -> {random:uniform(Size), random:uniform(Size)} end,
-    lists:seq(1, Count)
-  ),
+  lists:foldl(
+    fun(_, Matrix2) ->
+      swap(Matrix2, random:uniform(Size), random:uniform(Size))
+    end, Matrix, lists:seq(1, Count)
+  ).
 
-  #perturb{method = swap, changes = Changes}.
-
-generate_perturb3(#board{rows = Rows, columns = Columns} = Board) ->
+perturb3(#board{rows = Rows, columns = Columns, matrix = Matrix}) ->
   Size = Rows * Columns,
   Count = random:uniform(Size),
 
-  Changes = lists:map(
-    fun(_) -> generate_perturb3_change(Board) end,
-    lists:seq(1, Count)
-  ),
+  lists:foldl(
+    fun(_, Matrix2) ->
+      swap_random_adjacent(Matrix2, Rows, Columns)
+    end, Matrix, lists:seq(1, Count)
+  ).
 
-  #perturb{method = swap, changes = Changes}.
+perturb4(#board{rows = Rows, columns = Columns, matrix = Matrix} = Board) ->
+  RotRow = random:uniform(Rows - 1),
+  RotColumn = random:uniform(Columns - 1),
 
-generate_perturb3_change(#board{rows = Rows, columns = Columns} = Board) ->
+  Size = Rows * Columns,
+
+  lists:foldl(
+    fun(Index, Matrix2) ->
+      setelement(Index, Matrix2, element(wb_board:rotate_position(Board, Index, RotRow, RotColumn), Matrix))
+    end, Matrix, lists:seq(1, Size)
+  ).
+
+swap(Matrix, Index1, Index2) ->
+  Letter1 = element(Index1, Matrix),
+  Matrix2 = setelement(Index1, Matrix, element(Index2, Matrix)),
+  setelement(Index2, Matrix2, Letter1).
+
+swap_random_adjacent(Matrix, Rows, Columns) ->
   Row1 = random:uniform(Rows),
   Column1 = random:uniform(Columns),
 
@@ -71,25 +90,8 @@ generate_perturb3_change(#board{rows = Rows, columns = Columns} = Board) ->
   end,
 
   case (Row2 >= 1) and (Column2 >= 1) and (Row2 =< Rows) and (Column2 =< Columns) of
-    true -> {Row1 * Column1, Row2 * Column2};
-    false -> generate_perturb3_change(Board)
+    true -> swap(Matrix, Row1 * Column1, Row2 * Column2);
+    false -> swap_random_adjacent(Matrix, Rows, Columns)
   end.
 
-% replace letters with new letters
-replace(#board{matrix = Matrix}, #perturb{changes = Changes}) ->
-  lists:foldl(
-    fun({Index, Letter}, Matrix2) -> setelement(Index, Matrix2, Letter) end,
-    Matrix, Changes
-  ).
-
-% swap letters
-swap(#board{matrix = Matrix}, #perturb{changes = Changes}) ->
-  lists:foldl(
-    fun({Index1, Index2}, Matrix2) ->
-      Letter = element(Index1, Matrix2),
-      Matrix3 = setelement(Index1, Matrix2, element(Index2, Matrix2)),
-      setelement(Index2, Matrix3, Letter)
-    end,
-    Matrix, Changes
-  ).
 
