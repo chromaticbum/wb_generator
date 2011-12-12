@@ -15,11 +15,11 @@ perturb_grid(Grid) ->
   perturb_random(Grid).
 
 perturb_random(Grid) ->
-  case random:uniform(1) of
-    1 -> perturb2(Grid) %;
-    % 2 -> perturb2(Grid);
-    % 3 -> perturb3(Grid);
-    % 4 -> perturb4(Grid)
+  case random:uniform(4) of
+    1 -> perturb2(Grid);
+    2 -> perturb2(Grid);
+    3 -> perturb3(Grid);
+    4 -> perturb4(Grid)
   end.
 
 perturb1(#grid{type = letter, rows = Rows, columns = Columns} = Grid) ->

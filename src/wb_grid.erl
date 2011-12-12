@@ -8,8 +8,16 @@
     value/3,
     set_value/4,
     rotate_position/5,
-    word_count/1
+    word_count/1,
+    compact_string/1
   ]).
+
+compact_string(#grid{matrix = Matrix}) ->
+  CompactList = lists:map(
+    fun(Row) -> tuple_to_list(Row) end,
+    tuple_to_list(Matrix)
+  ),
+  string:join(CompactList, "/").
 
 create_letter_grid(Rows, Columns) ->
   Matrix = create_letter_matrix(Rows, Columns),
