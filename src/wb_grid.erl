@@ -5,6 +5,7 @@
 -export([
     create_letter_grid/2,
     random_letter/0,
+    random_vowel/0,
     value/3,
     set_value/4,
     rotate_position/5,
@@ -57,44 +58,54 @@ set_value(#grid{matrix = Matrix} = Grid, Row, Column, Value) ->
 word_count(#grid{type = letter, rows = Rows, columns = Columns} = Grid) ->
   RootNode = wb_tree:get_node(0),
   Used = create_used_grid(Rows, Columns),
+  Info = ets:new(info, [set]),
 
-  lists:foldl(
+  Count = lists:foldl(
     fun(Row, WordCount) ->
       WordCount + lists:foldl(
         fun(Column, WordCountRow) ->
-          WordCountRow + word_count(Grid, Row, Column, RootNode, Used)
+          WordCountRow + word_count(Grid, Row, Column, RootNode, Used, Info)
         end, 0, lists:seq(1, Columns)
       )
     end, 0, lists:seq(1, Rows)
-  ).
+  ),
+  ets:delete(Info),
+  Count.
 
-word_count(#grid{type = letter} = Grid, Row, Column, Node, Used) ->
-  word_count(Grid, Row, Column, Node, Used, 1).
+word_count(#grid{type = letter} = Grid, Row, Column, Node, Used, Info) ->
+  word_count(Grid, Row, Column, Node, Used, 1, [], Info).
 
-word_count(#grid{type = letter, rows = Rows, columns = Columns} = Grid, Row, Column, {_Id, _Terminal, Ids}, Used, Length) ->
+word_count(#grid{type = letter, rows = Rows, columns = Columns} = Grid, Row, Column, {_Id, _Terminal, Ids}, Used, Length, Word, Info) ->
   case (Row >= 1) andalso (Column >= 1) andalso (Row =< Rows) andalso (Column =< Columns) andalso (not value(Used, Row, Column)) of
     true ->
       Letter = value(Grid, Row, Column),
+      Word2 = [Letter | Word],
       Id = element(Letter - $a + 1, Ids),
-      wb_tree:get_node(Id),
 
       case wb_tree:get_node(Id) of
         not_found -> 0;
         Node ->
           Used2 = set_value(Used, Row, Column, true),
 
-          {_Id2, Terminal, _Ids2} = Node,
-          Count = word_count(Grid, Row + 1, Column, Node, Used2, Length + 1)
-            + word_count(Grid, Row - 1, Column, Node, Used2, Length + 1)
-            + word_count(Grid, Row, Column + 1, Node, Used2, Length + 1)
-            + word_count(Grid, Row, Column - 1, Node, Used2, Length + 1)
-            + word_count(Grid, Row + 1, Column + 1, Node, Used2, Length + 1)
-            + word_count(Grid, Row - 1, Column - 1, Node, Used2, Length + 1)
-            + word_count(Grid, Row - 1, Column + 1, Node, Used2, Length + 1)
-            + word_count(Grid, Row + 1, Column - 1, Node, Used2, Length + 1),
+          case ets:lookup(Info, Word) of
+            [{Word}] -> Selected = true;
+            [] -> Selected = false
+          end,
 
-          case Terminal and (Length >= 3) of
-            true -> 1 + Count;
+          {Id, Terminal, _Ids2} = Node,
+          Count = word_count(Grid, Row + 1, Column, Node, Used2, Length + 1, Word2, Info)
+            + word_count(Grid, Row - 1, Column, Node, Used2, Length + 1, Word2, Info)
+            + word_count(Grid, Row, Column + 1, Node, Used2, Length + 1, Word2, Info)
+            + word_count(Grid, Row, Column - 1, Node, Used2, Length + 1, Word2, Info)
+            + word_count(Grid, Row + 1, Column + 1, Node, Used2, Length + 1, Word2, Info)
+            + word_count(Grid, Row - 1, Column - 1, Node, Used2, Length + 1, Word2, Info)
+            + word_count(Grid, Row - 1, Column + 1, Node, Used2, Length + 1, Word2, Info)
+            + word_count(Grid, Row + 1, Column - 1, Node, Used2, Length + 1, Word2, Info),
+
+          case (not Selected) andalso Terminal andalso (Length >= 3) of
+            true ->
+              ets:insert(Info, {Word}),
+              1 + Count;
             false -> Count
           end
       end;
@@ -104,3 +115,11 @@ word_count(#grid{type = letter, rows = Rows, columns = Columns} = Grid, Row, Col
 random_letter() ->
   $a + random:uniform(26) - 1.
 
+random_vowel() ->
+  case random:uniform(5) of
+    1 -> $a;
+    2 -> $e;
+    3 -> $i;
+    4 -> $o;
+    5 -> $u
+  end.

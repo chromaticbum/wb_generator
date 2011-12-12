@@ -11,6 +11,8 @@
     perturb4/1
   ]).
 
+-define(PERTURB_LIMIT, 5).
+
 perturb_grid(Grid) ->
   perturb_random(Grid).
 
@@ -20,10 +22,11 @@ perturb_random(Grid) ->
     2 -> perturb2(Grid);
     3 -> perturb3(Grid);
     4 -> perturb4(Grid)
+    % 5 -> perturb5(Grid)
   end.
 
 perturb1(#grid{type = letter, rows = Rows, columns = Columns} = Grid) ->
-  Count = random:uniform(Rows * Columns),
+  Count = random:uniform((Rows * Columns)) rem ?PERTURB_LIMIT + 1,
 
   lists:foldl(
     fun(_, Grid2) ->
@@ -32,7 +35,7 @@ perturb1(#grid{type = letter, rows = Rows, columns = Columns} = Grid) ->
   ).
 
 perturb2(#grid{rows = Rows, columns = Columns} = Grid) ->
-  Count = random:uniform(Rows * Columns),
+  Count = random:uniform((Rows * Columns)) rem ?PERTURB_LIMIT + 1,
 
   lists:foldl(
     fun(_, Grid2) ->
@@ -41,7 +44,7 @@ perturb2(#grid{rows = Rows, columns = Columns} = Grid) ->
   ).
 
 perturb3(#grid{rows = Rows, columns = Columns} = Grid) ->
-  Count = random:uniform(Rows * Columns),
+  Count = random:uniform((Rows * Columns)) rem ?PERTURB_LIMIT + 1,
 
   lists:foldl(
     fun(_, Grid2) ->
@@ -63,6 +66,15 @@ perturb4(#grid{rows = Rows, columns = Columns} = Grid) ->
       )
     end, Grid, lists:seq(1, Rows)
   ).
+
+% perturb5(#grid{type = letter, rows = Rows, columns = Columns} = Grid) ->
+%   Count = random:uniform((Rows * Columns) rem ?PERTURB_LIMIT + 1),
+
+%   lists:foldl(
+%     fun(_, Grid2) ->
+%       wb_grid:set_value(Grid2, random:uniform(Rows), random:uniform(Columns), wb_grid:random_vowel())
+%     end, Grid, lists:seq(1, Count)
+%   ).
 
 swap(Grid, Row1, Column1, Row2, Column2) ->
   Letter1 = wb_grid:value(Grid, Row1, Column1),
