@@ -9,7 +9,7 @@
     value/3,
     set_value/4,
     rotate_position/5,
-    word_count/2,
+    word_count/1,
     compact_string/1
   ]).
 
@@ -51,19 +51,19 @@ value(#grid{matrix = Matrix}, Row, Column) ->
 set_value(#grid{matrix = Matrix} = Grid, Row, Column, Value) ->
   Grid#grid{matrix = setelement(Row, Matrix, setelement(Column, element(Row, Matrix), Value))}.
 
-word_count(#grid{type = letter, rows = Rows, columns = Columns} = Grid, Info) ->
+word_count(#grid{type = letter, rows = Rows, columns = Columns} = Grid) ->
+  Info = ets:new(info, [set]),
   Count = lists:foldl(
     fun(Row, WordCount) ->
       WordCount + lists:foldl(
         fun(Column, WordCountRow) ->
-            Used = new_used(Rows, Columns),
-            WordCountRow + word_count(Grid, 0, Row, Column, 0, Used, Info)
+            WordCountRow + word_count(Grid, 0, Row, Column, 0, Info)
         end, 0, lists:seq(1, Columns)
       )
     end, 0, lists:seq(1, Rows)
   ),
 
-  ets:delete_all_objects(Info),
+  ets:delete(Info),
   Count.
 
 is_selected(Info, Id) ->
@@ -72,39 +72,33 @@ is_selected(Info, Id) ->
 set_selected(Info, Id) ->
   ets:insert(Info, {Id}).
 
-new_used(Rows, Columns) ->
-  {Columns, list_to_tuple(
-    lists:map(
-      fun(_) -> false end,
-      lists:seq(1, Rows * Columns)
-    )
-  )}.
+is_used(Info, Row, Column) ->
+  ets:member(Info, {Row, Column}).
 
-is_used({Columns, Used}, Row, Column) ->
-  Index = (Row - 1) * Columns + Column,
-  element(Index, Used).
+set_used(Info, Row, Column) ->
+  ets:insert(Info, {{Row, Column}}).
 
-set_used({Columns, Used}, Row, Column) ->
-  Index = (Row - 1) * Columns + Column,
-  {Columns, setelement(Index, Used, true)}.
+set_unused(Info, Row, Column) ->
+  ets:delete_object(Info, {{Row, Column}}).
 
-word_count(#grid{rows = Rows, columns = Columns} = Grid, Id, Row, Column, Length, Used, Info) ->
-  case (Row >= 1) andalso (Column >= 1) andalso (Row =< Rows) andalso (Column =< Columns) andalso(not is_used(Used, Row, Column)) of
+word_count(#grid{rows = Rows, columns = Columns} = Grid, Id, Row, Column, Length, Info) ->
+  case (Row >= 1) andalso (Column >= 1) andalso (Row =< Rows) andalso (Column =< Columns) andalso(not is_used(Info, Row, Column)) of
     true ->
       Letter = value(Grid, Row, Column),
-      Used2 = set_used(Used, Row, Column),
 
       case trie:get_node(Id, Letter) of
         {{Id, Letter}, Id2} ->
+          set_used(Info, Row, Column),
           Count =
-            word_count(Grid, Id2, Row + 1, Column, Length + 1, Used2, Info) +
-            word_count(Grid, Id2, Row - 1, Column, Length + 1, Used2, Info) +
-            word_count(Grid, Id2, Row, Column + 1, Length + 1, Used2, Info) +
-            word_count(Grid, Id2, Row, Column - 1, Length + 1, Used2, Info) +
-            word_count(Grid, Id2, Row + 1, Column + 1, Length + 1, Used2, Info) +
-            word_count(Grid, Id2, Row - 1, Column - 1, Length + 1, Used2, Info) +
-            word_count(Grid, Id2, Row - 1, Column + 1, Length + 1, Used2, Info) +
-            word_count(Grid, Id2, Row + 1, Column - 1, Length + 1, Used2, Info),
+            word_count(Grid, Id2, Row + 1, Column, Length + 1, Info) +
+            word_count(Grid, Id2, Row - 1, Column, Length + 1, Info) +
+            word_count(Grid, Id2, Row, Column + 1, Length + 1, Info) +
+            word_count(Grid, Id2, Row, Column - 1, Length + 1, Info) +
+            word_count(Grid, Id2, Row + 1, Column + 1, Length + 1, Info) +
+            word_count(Grid, Id2, Row - 1, Column - 1, Length + 1, Info) +
+            word_count(Grid, Id2, Row - 1, Column + 1, Length + 1, Info) +
+            word_count(Grid, Id2, Row + 1, Column - 1, Length + 1, Info),
+          set_unused(Info, Row, Column),
 
           case (not is_selected(Info, Id2)) andalso trie:is_terminal(Id2) andalso (Length >= 3) of
             true ->

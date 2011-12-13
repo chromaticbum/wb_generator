@@ -5,3 +5,8 @@
     matrix
   }).
 
+-record(scored_grid, {
+    score,
+    grid
+  }).
+
