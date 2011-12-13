@@ -7,8 +7,9 @@
   ]).
 
 start(_Type, _Args) ->
-  wb_tree:start_link(),
-  spawn(wb_tree, load_file, [code:priv_dir(wb_generator) ++ "/dictionary"]),
+  trie:init(),
+  wb_generator:init(),
+  spawn(trie, load_file, [code:priv_dir(wb_generator) ++ "/dictionary"]),
   {ok, self()}.
 
 stop(_S) ->

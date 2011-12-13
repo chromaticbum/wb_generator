@@ -11,7 +11,7 @@
     perturb4/1
   ]).
 
--define(PERTURB_LIMIT, 5).
+-define(PERTURB_LIMIT, 7).
 
 perturb_grid(Grid) ->
   perturb_random(Grid).

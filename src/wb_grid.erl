@@ -9,7 +9,7 @@
     value/3,
     set_value/4,
     rotate_position/5,
-    word_count/1,
+    word_count/2,
     compact_string/1
   ]).
 
@@ -42,10 +42,6 @@ create_row(Columns, Generate) ->
     lists:seq(1, Columns)
   )).
 
-create_used_grid(Rows, Columns) ->
-  Matrix = create_matrix(Rows, Columns, fun() -> false end),
-  #grid{type = used, rows = Rows, columns = Columns, matrix = Matrix}.
-
 rotate_position(#grid{rows = Rows, columns = Columns}, Row, Column, RotRow, RotColumn) ->
   {((Row + RotRow - 1) rem Rows) + 1, ((Column + RotColumn - 1) rem Columns) + 1}.
 
@@ -55,59 +51,68 @@ value(#grid{matrix = Matrix}, Row, Column) ->
 set_value(#grid{matrix = Matrix} = Grid, Row, Column, Value) ->
   Grid#grid{matrix = setelement(Row, Matrix, setelement(Column, element(Row, Matrix), Value))}.
 
-word_count(#grid{type = letter, rows = Rows, columns = Columns} = Grid) ->
-  RootNode = wb_tree:get_node(0),
-  Used = create_used_grid(Rows, Columns),
-  Info = ets:new(info, [set]),
-
+word_count(#grid{type = letter, rows = Rows, columns = Columns} = Grid, Info) ->
   Count = lists:foldl(
     fun(Row, WordCount) ->
       WordCount + lists:foldl(
         fun(Column, WordCountRow) ->
-          WordCountRow + word_count(Grid, Row, Column, RootNode, Used, Info)
+            Used = new_used(Rows, Columns),
+            WordCountRow + word_count(Grid, 0, Row, Column, 0, Used, Info)
         end, 0, lists:seq(1, Columns)
       )
     end, 0, lists:seq(1, Rows)
   ),
-  ets:delete(Info),
+
+  ets:delete_all_objects(Info),
   Count.
 
-word_count(#grid{type = letter} = Grid, Row, Column, Node, Used, Info) ->
-  word_count(Grid, Row, Column, Node, Used, 1, [], Info).
+is_selected(Info, Id) ->
+  ets:member(Info, Id).
 
-word_count(#grid{type = letter, rows = Rows, columns = Columns} = Grid, Row, Column, {_Id, _Terminal, Ids}, Used, Length, Word, Info) ->
-  case (Row >= 1) andalso (Column >= 1) andalso (Row =< Rows) andalso (Column =< Columns) andalso (not value(Used, Row, Column)) of
+set_selected(Info, Id) ->
+  ets:insert(Info, {Id}).
+
+new_used(Rows, Columns) ->
+  {Columns, list_to_tuple(
+    lists:map(
+      fun(_) -> false end,
+      lists:seq(1, Rows * Columns)
+    )
+  )}.
+
+is_used({Columns, Used}, Row, Column) ->
+  Index = (Row - 1) * Columns + Column,
+  element(Index, Used).
+
+set_used({Columns, Used}, Row, Column) ->
+  Index = (Row - 1) * Columns + Column,
+  {Columns, setelement(Index, Used, true)}.
+
+word_count(#grid{rows = Rows, columns = Columns} = Grid, Id, Row, Column, Length, Used, Info) ->
+  case (Row >= 1) andalso (Column >= 1) andalso (Row =< Rows) andalso (Column =< Columns) andalso(not is_used(Used, Row, Column)) of
     true ->
       Letter = value(Grid, Row, Column),
-      Word2 = [Letter | Word],
-      Id = element(Letter - $a + 1, Ids),
+      Used2 = set_used(Used, Row, Column),
 
-      case wb_tree:get_node(Id) of
-        not_found -> 0;
-        Node ->
-          Used2 = set_value(Used, Row, Column, true),
+      case trie:get_node(Id, Letter) of
+        {{Id, Letter}, Id2} ->
+          Count =
+            word_count(Grid, Id2, Row + 1, Column, Length + 1, Used2, Info) +
+            word_count(Grid, Id2, Row - 1, Column, Length + 1, Used2, Info) +
+            word_count(Grid, Id2, Row, Column + 1, Length + 1, Used2, Info) +
+            word_count(Grid, Id2, Row, Column - 1, Length + 1, Used2, Info) +
+            word_count(Grid, Id2, Row + 1, Column + 1, Length + 1, Used2, Info) +
+            word_count(Grid, Id2, Row - 1, Column - 1, Length + 1, Used2, Info) +
+            word_count(Grid, Id2, Row - 1, Column + 1, Length + 1, Used2, Info) +
+            word_count(Grid, Id2, Row + 1, Column - 1, Length + 1, Used2, Info),
 
-          case ets:lookup(Info, Word) of
-            [{Word}] -> Selected = true;
-            [] -> Selected = false
-          end,
-
-          {Id, Terminal, _Ids2} = Node,
-          Count = word_count(Grid, Row + 1, Column, Node, Used2, Length + 1, Word2, Info)
-            + word_count(Grid, Row - 1, Column, Node, Used2, Length + 1, Word2, Info)
-            + word_count(Grid, Row, Column + 1, Node, Used2, Length + 1, Word2, Info)
-            + word_count(Grid, Row, Column - 1, Node, Used2, Length + 1, Word2, Info)
-            + word_count(Grid, Row + 1, Column + 1, Node, Used2, Length + 1, Word2, Info)
-            + word_count(Grid, Row - 1, Column - 1, Node, Used2, Length + 1, Word2, Info)
-            + word_count(Grid, Row - 1, Column + 1, Node, Used2, Length + 1, Word2, Info)
-            + word_count(Grid, Row + 1, Column - 1, Node, Used2, Length + 1, Word2, Info),
-
-          case (not Selected) andalso Terminal andalso (Length >= 3) of
+          case (not is_selected(Info, Id2)) andalso trie:is_terminal(Id2) andalso (Length >= 3) of
             true ->
-              ets:insert(Info, {Word}),
-              1 + Count;
+              set_selected(Info, Id2),
+              Count +1;
             false -> Count
-          end
+          end;
+        not_found -> 0
       end;
     false -> 0
   end.
