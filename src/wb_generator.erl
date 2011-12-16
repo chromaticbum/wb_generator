@@ -3,7 +3,8 @@
 -include("wb_grid.hrl").
 
 -export([
-    generate_boards/1
+    generate_boards/1,
+    print_boards/1
   ]).
 
 -define(DEFAULT_SIZE, 5).
@@ -77,8 +78,13 @@ generate_boards(Rows, Columns, GridCount, Rounds, TargetScore, Repeat) ->
     false -> generate_boards(Rows, Columns, GridCount, Rounds, TargetScore, Repeat - 1)
   end.
 
-% print_boards(Rows, Columns, GridCount, Rounds) ->
-%   lists:foreach(
-%     fun(#scored_grid{score = Score, grid = Grid}) -> io:format("~s:~p~n", [wb_grid:compact_string(Grid), Score]) end,
-%     generate_boards(Rows, Columns, GridCount, Rounds)
-%   ).
+print_boards(Config) ->
+  case generate_boards(Config) of
+    failed -> io:format("Could not reach the target score.~n");
+    Boards ->
+      io:format("Found the following boards matching your criteria.~n"),
+      lists:foreach(
+        fun(#scored_grid{score = Score, grid = Grid}) -> io:format("~s:~p~n", [wb_grid:compact_string(Grid), Score]) end,
+        Boards
+      )
+  end.

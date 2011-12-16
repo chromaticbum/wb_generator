@@ -1,1 +1,43 @@
 This project let's you generate dense word boards.
+
+First run:
+
+./test.sh
+
+Wait for "Done reading dictionary" info report
+
+Then type this in the console:
+
+wb_generator:print_boards([
+  {rows, 5},
+  {columns, 5},
+  {grid_count, 5},
+  {rounds, 300},
+  {target_score, 500},
+  {repeats, 2}
+]).
+
+This will keep the top 5 (grid_count) grids between each round
+from ten boards generated using a random perturbation.
+
+If after 300 rounds the target score has not been reached
+(ie one of the boards does not have over 500 words on it)
+then the attempt is repeated.
+
+If after two attempts a board has still not been generated,
+the algorithm gives up.
+
+See: http://ai.stanford.edu/~chuongdo/boggle/index.html
+For a better description of the algorithm.
+
+I am new to erlang, and this algorithm runs slower than the c version
+it also does not produce boggle boards as dense, but it can get into
+the thousands of words for 5x5 boards, whichs is quite dense.
+
+The reason for the slowness is because ets table lookups for trie
+are much slower than native c trie structures.
+
+The reason for less density in the boards is most likely because
+I have not implemented recording results of perturbations either,
+and each perturbation is truly random instead of being weighted on
+past success rates.
